@@ -7,8 +7,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var popover: NSPopover!
     var onboardingWindow: NSWindow?
     let updater = UpdateChecker()
+    private var bundleWatcher: DispatchSourceFileSystemObject?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        startBundleWatcher()
         popover = NSPopover()
         popover.contentSize = NSSize(width: 860, height: 600)
         popover.behavior = .transient
@@ -66,4 +68,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    private func startBundleWatcher() {
+        let bundlePath = Bundle.main.bundlePath
+        let fd = open(bundlePath, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: .delete,
+            queue: .main
+        )
+        source.setEventHandler { [weak self] in
+            self?.uninstallAndQuit()
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        bundleWatcher = source
+    }
+
+    private func uninstallAndQuit() {
+        let plist = NSHomeDirectory() + "/Library/LaunchAgents/com.timecleaner.app.plist"
+        let task = Process()
+        task.launchPath = "/bin/launchctl"
+        task.arguments = ["unload", plist]
+        try? task.run()
+        task.waitUntilExit()
+        try? FileManager.default.removeItem(atPath: plist)
+        NSApp.terminate(nil)
+    }
 }
