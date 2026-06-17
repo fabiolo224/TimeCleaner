@@ -5,6 +5,7 @@ import AppKit
 
 struct ContentView: View {
     @State private var tab: Tab = .apps
+    @State private var showUninstallConfirm = false
     @EnvironmentObject var updater: UpdateChecker
     enum Tab { case apps, files }
 
@@ -19,9 +20,29 @@ struct ContentView: View {
                 TabButton(title: L("Applicazioni", "Applications"), icon: "app.badge", selected: tab == .apps)  { tab = .apps }
                 TabButton(title: L("File", "Files"),                icon: "doc.fill",  selected: tab == .files) { tab = .files }
                 Spacer()
+                Menu {
+                    Button(role: .destructive, action: { showUninstallConfirm = true }) {
+                        Label(L("Disinstalla TimeCleaner", "Uninstall TimeCleaner"), systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(width: 28)
+                .padding(.trailing, 12)
             }
             .padding(.horizontal, 16).padding(.top, 10)
             .background(Color(NSColor.windowBackgroundColor))
+            .alert(L("Disinstallare TimeCleaner?", "Uninstall TimeCleaner?"), isPresented: $showUninstallConfirm) {
+                Button(L("Disinstalla", "Uninstall"), role: .destructive) { uninstall() }
+                Button(L("Annulla", "Cancel"), role: .cancel) {}
+            } message: {
+                Text(L("L'app verrà rimossa da /Applications e non si avvierà più al login.",
+                       "The app will be removed from /Applications and will no longer launch at login."))
+            }
 
             Divider()
 
@@ -555,6 +576,17 @@ struct FooterBar<Content: View>: View {
         .padding(.horizontal, 20).padding(.vertical, 7)
         .background(Color(NSColor.windowBackgroundColor))
     }
+}
+
+private func uninstall() {
+    let plist = NSHomeDirectory() + "/Library/LaunchAgents/com.timecleaner.app.plist"
+    let unload = Process()
+    unload.launchPath = "/bin/launchctl"
+    unload.arguments = ["unload", plist]
+    try? unload.run(); unload.waitUntilExit()
+    try? FileManager.default.removeItem(atPath: plist)
+    NSWorkspace.shared.recycle([URL(fileURLWithPath: "/Applications/TimeCleaner.app")]) { _, _ in }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { NSApp.terminate(nil) }
 }
 
 extension View {
