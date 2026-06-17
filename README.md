@@ -25,7 +25,12 @@
 
 ## Gatekeeper
 
-🇮🇹 Poiché l'app non è firmata, al primo avvio macOS potrebbe bloccarla. Vai in Impostazioni di Sistema → Privacy e Sicurezza → Apri comunque. Oppure da terminale:  
+🇮🇹 Poiché l'app non è firmata, al primo avvio macOS potrebbe bloccarla. Vai in Impostazioni di Sistema → Privacy e Sicurezza → Apri comunque. Oppure da terminale:
+
+```bash
+xattr -cr /Applications/TimeCleaner.app
+```
+
 🇬🇧 Since the app is not signed, macOS may block it on first launch. Go to System Settings → Privacy & Security → Open Anyway. Or from terminal:
 
 ```bash
