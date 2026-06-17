@@ -13,13 +13,13 @@ func daysSince(_ date: Date?) -> Int {
 }
 
 func formatLastUsed(_ date: Date?) -> String {
-    guard let date else { return "Mai usato" }
+    guard let date else { return L("Mai usato", "Never used") }
     let days = daysSince(date)
-    if days == 0 { return "Oggi" }
-    if days == 1 { return "Ieri" }
-    if days < 30 { return "\(days) giorni fa" }
-    if days < 365 { return "\(days / 30) mesi fa" }
-    return "\(days / 365) anni fa"
+    if days == 0 { return L("Oggi", "Today") }
+    if days == 1 { return L("Ieri", "Yesterday") }
+    if days < 30 { return L("\(days) giorni fa", "\(days) days ago") }
+    if days < 365 { return L("\(days / 30) mesi fa", "\(days / 30) months ago") }
+    return L("\(days / 365) anni fa", "\(days / 365) years ago")
 }
 
 func calcRiskScore(size: Int64, unusedDays: Int) -> Int {
@@ -35,10 +35,10 @@ func calcRiskScore(size: Int64, unusedDays: Int) -> Int {
 }
 
 func suggestionLabel(_ score: Int) -> String {
-    if score >= 70 { return "Fortemente consigliato" }
-    if score >= 40 { return "Consigliato" }
-    if score >= 20 { return "Considerare" }
-    return "Tenere"
+    if score >= 70 { return L("Fortemente consigliato", "Strongly suggested") }
+    if score >= 40 { return L("Consigliato", "Suggested") }
+    if score >= 20 { return L("Considerare", "Consider") }
+    return L("Tenere", "Keep")
 }
 
 func suggestionColorName(_ score: Int) -> String {
@@ -84,24 +84,38 @@ struct FileItem: Identifiable {
     var suggestion: String { suggestionLabel(riskScore) }
     var suggestionColor: String { suggestionColorName(riskScore) }
 
-    enum FileCategory: String {
-        case download = "Download"
-        case document = "Documenti"
-        case video = "Video"
-        case archive = "Archivi"
-        case image = "Immagini"
-        case cache = "Cache"
-        case other = "Altro"
+    enum FileCategory: String, Hashable, CaseIterable {
+        case download = "download"
+        case document = "document"
+        case video    = "video"
+        case archive  = "archive"
+        case image    = "image"
+        case cache    = "cache"
+        case other    = "other"
+
+        static var allCases: [FileCategory] = [.download, .document, .video, .archive, .image, .cache, .other]
+
+        var displayName: String {
+            switch self {
+            case .download: return L("Download", "Downloads")
+            case .document: return L("Documenti", "Documents")
+            case .video:    return L("Video", "Videos")
+            case .archive:  return L("Archivi", "Archives")
+            case .image:    return L("Immagini", "Images")
+            case .cache:    return L("Cache", "Cache")
+            case .other:    return L("Altro", "Other")
+            }
+        }
 
         var icon: String {
             switch self {
             case .download: return "arrow.down.circle"
             case .document: return "doc"
-            case .video: return "film"
-            case .archive: return "archivebox"
-            case .image: return "photo"
-            case .cache: return "internaldrive"
-            case .other: return "doc.fill"
+            case .video:    return "film"
+            case .archive:  return "archivebox"
+            case .image:    return "photo"
+            case .cache:    return "internaldrive"
+            case .other:    return "doc.fill"
             }
         }
     }
@@ -127,18 +141,36 @@ class AppScanner: ObservableObject {
     @Published var sortMode: SortMode = .riskScore
     @Published var filterMode: FilterMode = .all
 
-    enum SortMode: String, CaseIterable {
-        case riskScore = "Suggeriti"
-        case size = "Dimensione"
-        case lastUsed = "Ultimo utilizzo"
-        case name = "Nome"
+    enum SortMode: String, CaseIterable, Hashable {
+        case riskScore = "riskScore"
+        case size      = "size"
+        case lastUsed  = "lastUsed"
+        case name      = "name"
+
+        var displayName: String {
+            switch self {
+            case .riskScore: return L("Suggeriti", "Suggested")
+            case .size:      return L("Dimensione", "Size")
+            case .lastUsed:  return L("Ultimo utilizzo", "Last used")
+            case .name:      return L("Nome", "Name")
+            }
+        }
     }
 
-    enum FilterMode: String, CaseIterable {
-        case all = "Tutti"
-        case unused90 = "Non usati 3+ mesi"
-        case unused180 = "Non usati 6+ mesi"
-        case large = "Grandi (>500MB)"
+    enum FilterMode: String, CaseIterable, Hashable {
+        case all       = "all"
+        case unused90  = "unused90"
+        case unused180 = "unused180"
+        case large     = "large"
+
+        var displayName: String {
+            switch self {
+            case .all:       return L("Tutti", "All")
+            case .unused90:  return L("Non usati 3+ mesi", "Unused 3+ months")
+            case .unused180: return L("Non usati 6+ mesi", "Unused 6+ months")
+            case .large:     return L("Grandi (>500MB)", "Large (>500MB)")
+            }
+        }
     }
 
     var filteredApps: [AppInfo] {
@@ -160,15 +192,10 @@ class AppScanner: ObservableObject {
 
     var totalSize: Int64 { apps.reduce(0) { $0 + $1.size } }
 
-    // Bundle IDs that belong to Apple/system — never deletable
-    private let systemBundlePrefixes = [
-        "com.apple.", "com.apple.dt.", "com.apple.iWork.",
-    ]
+    private let systemBundlePrefixes = ["com.apple.", "com.apple.dt.", "com.apple.iWork."]
 
     private func isSystemApp(_ appURL: URL) -> Bool {
-        // Apps in /System/Applications are always system apps
         if appURL.path.hasPrefix("/System/") { return true }
-        // Check bundle identifier
         let plist = appURL.appendingPathComponent("Contents/Info.plist")
         if let dict = NSDictionary(contentsOf: plist),
            let bundleID = dict["CFBundleIdentifier"] as? String {
@@ -186,9 +213,7 @@ class AppScanner: ObservableObject {
             var found: [AppInfo] = []
             for dir in dirs {
                 let url = URL(fileURLWithPath: dir)
-                guard let contents = try? FileManager.default.contentsOfDirectory(
-                    at: url, includingPropertiesForKeys: nil
-                ) else { continue }
+                guard let contents = try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) else { continue }
                 for appURL in contents.filter({ $0.pathExtension == "app" }) {
                     if self.isSystemApp(appURL) { continue }
                     DispatchQueue.main.async { self.scanProgress = appURL.deletingPathExtension().lastPathComponent }
@@ -196,25 +221,17 @@ class AppScanner: ObservableObject {
                     let lastUsed = self.mdlsDate(for: appURL)
                     let icon = NSWorkspace.shared.icon(forFile: appURL.path)
                     icon.size = NSSize(width: 32, height: 32)
-                    found.append(AppInfo(
-                        name: appURL.deletingPathExtension().lastPathComponent,
-                        path: appURL, size: size, lastUsed: lastUsed, icon: icon
-                    ))
+                    found.append(AppInfo(name: appURL.deletingPathExtension().lastPathComponent,
+                        path: appURL, size: size, lastUsed: lastUsed, icon: icon))
                 }
             }
-            DispatchQueue.main.async {
-                self.apps = found
-                self.isScanning = false
-                self.scanProgress = ""
-            }
+            DispatchQueue.main.async { self.apps = found; self.isScanning = false; self.scanProgress = "" }
         }
     }
 
     func folderSize(at url: URL) -> Int64 {
         var size: Int64 = 0
-        guard let enumerator = FileManager.default.enumerator(
-            at: url, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]
-        ) else { return 0 }
+        guard let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) else { return 0 }
         for case let fileURL as URL in enumerator {
             size += (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap { Int64($0) } ?? 0
         }
@@ -260,37 +277,48 @@ class FileScanner: ObservableObject {
     @Published var categoryFilter: FileItem.FileCategory? = nil
     @Published var minSizeMB: Double = 10
 
-    enum SortMode: String, CaseIterable {
-        case riskScore = "Suggeriti"
-        case size      = "Dimensione"
-        case lastUsed  = "Ultima modifica"
-        case name      = "Nome"
+    enum SortMode: String, CaseIterable, Hashable {
+        case riskScore = "riskScore"
+        case size      = "size"
+        case lastUsed  = "lastUsed"
+        case name      = "name"
+
+        var displayName: String {
+            switch self {
+            case .riskScore: return L("Suggeriti", "Suggested")
+            case .size:      return L("Dimensione", "Size")
+            case .lastUsed:  return L("Ultima modifica", "Last modified")
+            case .name:      return L("Nome", "Name")
+            }
+        }
     }
 
-    enum FilterMode: String, CaseIterable {
-        case all      = "Tutti"
-        case unused90 = "Non usati 3+ mesi"
-        case unused180 = "Non usati 6+ mesi"
-        case large    = "Grandi (>1GB)"
+    enum FilterMode: String, CaseIterable, Hashable {
+        case all       = "all"
+        case unused90  = "unused90"
+        case unused180 = "unused180"
+        case large     = "large"
+
+        var displayName: String {
+            switch self {
+            case .all:       return L("Tutti", "All")
+            case .unused90:  return L("Non usati 3+ mesi", "Unused 3+ months")
+            case .unused180: return L("Non usati 6+ mesi", "Unused 6+ months")
+            case .large:     return L("Grandi (>1GB)", "Large (>1GB)")
+            }
+        }
     }
 
-    // Directories to scan (user-owned, safe to delete from)
     private let scanRoots: [String] = [
-        "~/Downloads",
-        "~/Documents",
-        "~/Desktop",
-        "~/Movies",
+        "~/Downloads", "~/Documents", "~/Desktop", "~/Movies",
         "~/Music/iTunes/iTunes Media/Downloads",
-        "~/Library/Caches",
-        "~/Library/Logs",
+        "~/Library/Caches", "~/Library/Logs",
         "~/Library/Application Support/MobileSync/Backup",
         "~/Library/Developer/Xcode/DerivedData",
         "~/Library/Developer/CoreSimulator/Devices",
-        "~/Public",
-        "~/Shared"
+        "~/Public", "~/Shared"
     ].map { NSString(string: $0).expandingTildeInPath }
 
-    // Paths that must never be shown/deleted
     private let blocklist: Set<String> = [
         "/System", "/usr", "/bin", "/sbin", "/etc", "/var",
         "/private/var", "/private/etc", "/Library/Apple",
@@ -323,10 +351,6 @@ class FileScanner: ObservableObject {
 
     var totalSize: Int64 { files.reduce(0) { $0 + $1.size } }
 
-    var categories: [FileItem.FileCategory] {
-        Array(Set(files.map(\.category))).sorted { $0.rawValue < $1.rawValue }
-    }
-
     func scan() {
         isScanning = true
         files = []
@@ -335,67 +359,40 @@ class FileScanner: ObservableObject {
             guard let self else { return }
             var found: [FileItem] = []
             let fm = FileManager.default
-
             for root in self.scanRoots {
                 let rootURL = URL(fileURLWithPath: root)
                 guard fm.fileExists(atPath: root) else { continue }
                 DispatchQueue.main.async { self.scanProgress = rootURL.lastPathComponent }
-
-                // Special handling for cache/logs: scan subdirectories as units
                 let isCacheOrLog = root.contains("/Caches") || root.contains("/Logs")
                     || root.contains("DerivedData") || root.contains("CoreSimulator")
                     || root.contains("MobileSync")
-
                 if isCacheOrLog {
                     guard let subs = try? fm.contentsOfDirectory(at: rootURL, includingPropertiesForKeys: nil) else { continue }
                     for sub in subs {
                         if self.isBlocked(sub) { continue }
                         let size = self.sizeOf(sub)
                         if size < minBytes { continue }
-                        let modDate = self.modDate(of: sub)
                         var isDir: ObjCBool = false
                         fm.fileExists(atPath: sub.path, isDirectory: &isDir)
-                        found.append(FileItem(
-                            name: sub.lastPathComponent,
-                            path: sub, size: size,
-                            lastModified: modDate,
-                            isDirectory: isDir.boolValue,
-                            category: .cache
-                        ))
+                        found.append(FileItem(name: sub.lastPathComponent, path: sub, size: size,
+                            lastModified: self.modDate(of: sub), isDirectory: isDir.boolValue, category: .cache))
                     }
                     continue
                 }
-
-                // Regular dirs: scan individual files (not recursing into subdirs as units)
-                guard let enumerator = fm.enumerator(
-                    at: rootURL,
+                guard let enumerator = fm.enumerator(at: rootURL,
                     includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey, .isDirectoryKey],
-                    options: [.skipsHiddenFiles, .skipsPackageDescendants]
-                ) else { continue }
-
+                    options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
                 for case let url as URL in enumerator {
                     if self.isBlocked(url) { enumerator.skipDescendants(); continue }
-                    guard let res = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .isDirectoryKey])
-                    else { continue }
+                    guard let res = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .isDirectoryKey]) else { continue }
                     if res.isDirectory == true { continue }
                     let fileSize = Int64(res.fileSize ?? 0)
                     if fileSize < minBytes { continue }
-                    let modDate = res.contentModificationDate
-                    found.append(FileItem(
-                        name: url.lastPathComponent,
-                        path: url, size: fileSize,
-                        lastModified: modDate,
-                        isDirectory: false,
-                        category: fileCategory(for: url)
-                    ))
+                    found.append(FileItem(name: url.lastPathComponent, path: url, size: fileSize,
+                        lastModified: res.contentModificationDate, isDirectory: false, category: fileCategory(for: url)))
                 }
             }
-
-            DispatchQueue.main.async {
-                self.files = found
-                self.isScanning = false
-                self.scanProgress = ""
-            }
+            DispatchQueue.main.async { self.files = found; self.isScanning = false; self.scanProgress = "" }
         }
     }
 
@@ -406,9 +403,7 @@ class FileScanner: ObservableObject {
 
     private func sizeOf(_ url: URL) -> Int64 {
         var size: Int64 = 0
-        guard let enumerator = FileManager.default.enumerator(
-            at: url, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]
-        ) else {
+        guard let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) else {
             return (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap { Int64($0) } ?? 0
         }
         for case let f as URL in enumerator {

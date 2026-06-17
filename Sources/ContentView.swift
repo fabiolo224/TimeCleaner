@@ -5,13 +5,19 @@ import AppKit
 
 struct ContentView: View {
     @State private var tab: Tab = .apps
+    @EnvironmentObject var updater: UpdateChecker
     enum Tab { case apps, files }
 
     var body: some View {
         VStack(spacing: 0) {
+            // Update banner
+            if updater.updateAvailable {
+                UpdateBanner(updater: updater)
+            }
+
             HStack(spacing: 0) {
-                TabButton(title: "Applicazioni", icon: "app.badge", selected: tab == .apps)  { tab = .apps }
-                TabButton(title: "File",          icon: "doc.fill",  selected: tab == .files) { tab = .files }
+                TabButton(title: L("Applicazioni", "Applications"), icon: "app.badge", selected: tab == .apps)  { tab = .apps }
+                TabButton(title: L("File", "Files"),                icon: "doc.fill",  selected: tab == .files) { tab = .files }
                 Spacer()
             }
             .padding(.horizontal, 16).padding(.top, 10)
@@ -21,6 +27,42 @@ struct ContentView: View {
 
             if tab == .apps { AppsView() } else { FilesView() }
         }
+    }
+}
+
+// MARK: - Update banner
+
+struct UpdateBanner: View {
+    @ObservedObject var updater: UpdateChecker
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundColor(.white)
+            Text(L("Aggiornamento disponibile: v\(updater.latestVersion)",
+                   "Update available: v\(updater.latestVersion)"))
+                .font(.callout).bold().foregroundColor(.white)
+            Spacer()
+            if updater.isDownloading {
+                ProgressView(value: updater.downloadProgress)
+                    .progressViewStyle(.linear)
+                    .frame(width: 100)
+                    .tint(.white)
+                Text("\(Int(updater.downloadProgress * 100))%")
+                    .font(.caption).foregroundColor(.white)
+            } else {
+                Button(L("Aggiorna e riavvia", "Update & restart")) {
+                    updater.downloadAndInstall()
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 12).padding(.vertical, 5)
+                .background(Color.white.opacity(0.2))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .foregroundColor(.white).font(.callout).bold()
+            }
+        }
+        .padding(.horizontal, 20).padding(.vertical, 10)
+        .background(Color.accentColor)
     }
 }
 
@@ -61,10 +103,9 @@ struct AppsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Toolbar
             HStack(spacing: 10) {
                 if scanner.apps.isEmpty {
-                    Text("Scansiona le applicazioni installate")
+                    Text(L("Scansiona le applicazioni installate", "Scan installed applications"))
                         .font(.caption).foregroundColor(.secondary)
                 } else {
                     Text("\(scanner.apps.count) app · \(ByteCountFormatter.string(fromByteCount: scanner.totalSize, countStyle: .file))")
@@ -78,18 +119,17 @@ struct AppsView: View {
                     }
                 }
                 Picker("", selection: $scanner.filterMode) {
-                    ForEach(AppScanner.FilterMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    ForEach(AppScanner.FilterMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }.pickerStyle(.menu).frame(width: 160)
                 Picker("", selection: $scanner.sortMode) {
-                    ForEach(AppScanner.SortMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    ForEach(AppScanner.SortMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }.pickerStyle(.menu).frame(width: 130)
                 Button(action: { selection.removeAll(); scanner.scan() }) {
-                    Label("Scansiona", systemImage: "arrow.clockwise")
+                    Label(L("Scansiona", "Scan"), systemImage: "arrow.clockwise")
                 }.disabled(scanner.isScanning).buttonStyle(.borderedProminent)
             }
             .padding(.horizontal, 20).padding(.vertical, 10)
 
-            // Selection action bar
             if !selection.isEmpty {
                 SelectionBar(
                     count: selection.count,
@@ -102,9 +142,8 @@ struct AppsView: View {
             Divider()
 
             if scanner.apps.isEmpty && !scanner.isScanning {
-                EmptyState(icon: "app.badge", text: "Premi Scansiona per analizzare le app")
+                EmptyState(icon: "app.badge", text: L("Premi Scansiona per analizzare le app", "Press Scan to analyse apps"))
             } else {
-                // Column header with select-all checkbox
                 HStack(spacing: 0) {
                     Toggle("", isOn: Binding(
                         get: { allChecked },
@@ -115,13 +154,13 @@ struct AppsView: View {
                     ))
                     .toggleStyle(.checkbox)
                     .frame(width: 28)
-                    .help(allChecked ? "Deseleziona tutto" : "Seleziona tutto")
+                    .help(allChecked ? L("Deseleziona tutto", "Deselect all") : L("Seleziona tutto", "Select all"))
 
-                    Text("Applicazione").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Dimensione").frame(width: 110, alignment: .trailing)
-                    Text("Ultimo utilizzo").frame(width: 140, alignment: .trailing)
-                    Text("Suggerimento").frame(width: 180, alignment: .center)
-                    Text("Azioni").frame(width: 60, alignment: .center)
+                    Text(L("Applicazione", "Application")).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(L("Dimensione", "Size")).frame(width: 110, alignment: .trailing)
+                    Text(L("Ultimo utilizzo", "Last used")).frame(width: 140, alignment: .trailing)
+                    Text(L("Suggerimento", "Suggestion")).frame(width: 180, alignment: .center)
+                    Text(L("Azioni", "Actions")).frame(width: 60, alignment: .center)
                 }
                 .font(.caption).foregroundColor(.secondary)
                 .padding(.horizontal, 20).padding(.vertical, 5)
@@ -151,30 +190,34 @@ struct AppsView: View {
                 FooterBar {
                     let high = scanner.filteredApps.filter { $0.riskScore >= 70 }
                     let sz   = high.reduce(Int64(0)) { $0 + $1.size }
-                    Text("\(high.count) app consigliate · risparmio potenziale: \(ByteCountFormatter.string(fromByteCount: sz, countStyle: .file))")
-                        .font(.caption).foregroundColor(.secondary)
+                    Text(L(
+                        "\(high.count) app consigliate · risparmio potenziale: \(ByteCountFormatter.string(fromByteCount: sz, countStyle: .file))",
+                        "\(high.count) apps suggested · potential saving: \(ByteCountFormatter.string(fromByteCount: sz, countStyle: .file))"
+                    )).font(.caption).foregroundColor(.secondary)
                 }
             }
         }
-        // Bulk delete
-        .alert("Eliminare \(selection.count) app?", isPresented: $showBulkConfirm) {
-            Button("Sposta nel Cestino", role: .destructive) {
+        .alert(L("Eliminare \(selection.count) app?", "Delete \(selection.count) apps?"), isPresented: $showBulkConfirm) {
+            Button(L("Sposta nel Cestino", "Move to Trash"), role: .destructive) {
                 let toDelete = selectedApps
                 selection.removeAll()
                 toDelete.forEach { scanner.moveToTrash($0) }
             }
-            Button("Annulla", role: .cancel) {}
+            Button(L("Annulla", "Cancel"), role: .cancel) {}
         } message: {
-            Text("Verranno spostate nel Cestino \(selection.count) app (\(ByteCountFormatter.string(fromByteCount: selectedSize, countStyle: .file))). Potrai recuperarle prima di svuotarlo.")
+            Text(L(
+                "Verranno spostate nel Cestino \(selection.count) app (\(ByteCountFormatter.string(fromByteCount: selectedSize, countStyle: .file))). Potrai recuperarle prima di svuotarlo.",
+                "\(selection.count) apps (\(ByteCountFormatter.string(fromByteCount: selectedSize, countStyle: .file))) will be moved to Trash. You can recover them before emptying it."
+            ))
         }
-        // Single delete
-        .alert("Eliminare \"\(singleTarget?.name ?? "")\"?", isPresented: $showSingleConfirm) {
-            Button("Sposta nel Cestino", role: .destructive) {
+        .alert(L("Eliminare \"\(singleTarget?.name ?? "")\"?", "Delete \"\(singleTarget?.name ?? "")\"?"), isPresented: $showSingleConfirm) {
+            Button(L("Sposta nel Cestino", "Move to Trash"), role: .destructive) {
                 if let a = singleTarget { selection.remove(a.id); scanner.moveToTrash(a) }
             }
-            Button("Annulla", role: .cancel) {}
+            Button(L("Annulla", "Cancel"), role: .cancel) {}
         } message: {
-            Text("L'app verrà spostata nel Cestino. Potrai recuperarla prima di svuotarlo.")
+            Text(L("L'app verrà spostata nel Cestino. Potrai recuperarla prima di svuotarlo.",
+                   "The app will be moved to Trash. You can recover it before emptying it."))
         }
     }
 }
@@ -200,10 +243,10 @@ struct FilesView: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 if scanner.files.isEmpty {
-                    Text("Scansiona Download, Documenti, Cache e altro")
+                    Text(L("Scansiona Download, Documenti, Cache e altro", "Scan Downloads, Documents, Cache and more"))
                         .font(.caption).foregroundColor(.secondary)
                 } else {
-                    Text("\(scanner.files.count) file · \(ByteCountFormatter.string(fromByteCount: scanner.totalSize, countStyle: .file))")
+                    Text("\(scanner.files.count) \(L("file", "files")) · \(ByteCountFormatter.string(fromByteCount: scanner.totalSize, countStyle: .file))")
                         .font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
@@ -214,26 +257,26 @@ struct FilesView: View {
                     }
                 }
                 HStack(spacing: 4) {
-                    Text("Min:").font(.caption).foregroundColor(.secondary)
+                    Text(L("Min:", "Min:")).font(.caption).foregroundColor(.secondary)
                     Picker("", selection: $scanner.minSizeMB) {
                         Text("1 MB").tag(1.0); Text("10 MB").tag(10.0)
                         Text("50 MB").tag(50.0); Text("100 MB").tag(100.0); Text("500 MB").tag(500.0)
                     }.pickerStyle(.menu).frame(width: 80)
                 }
                 Picker("", selection: $scanner.categoryFilter) {
-                    Text("Tutte categorie").tag(Optional<FileItem.FileCategory>.none)
+                    Text(L("Tutte categorie", "All categories")).tag(Optional<FileItem.FileCategory>.none)
                     ForEach(FileItem.FileCategory.allCases, id: \.self) {
-                        Text($0.rawValue).tag(Optional($0))
+                        Text($0.displayName).tag(Optional($0))
                     }
                 }.pickerStyle(.menu).frame(width: 140)
                 Picker("", selection: $scanner.filterMode) {
-                    ForEach(FileScanner.FilterMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    ForEach(FileScanner.FilterMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }.pickerStyle(.menu).frame(width: 155)
                 Picker("", selection: $scanner.sortMode) {
-                    ForEach(FileScanner.SortMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    ForEach(FileScanner.SortMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }.pickerStyle(.menu).frame(width: 130)
                 Button(action: { selection.removeAll(); scanner.scan() }) {
-                    Label("Scansiona", systemImage: "arrow.clockwise")
+                    Label(L("Scansiona", "Scan"), systemImage: "arrow.clockwise")
                 }.disabled(scanner.isScanning).buttonStyle(.borderedProminent)
             }
             .padding(.horizontal, 20).padding(.vertical, 10)
@@ -250,7 +293,7 @@ struct FilesView: View {
             Divider()
 
             if scanner.files.isEmpty && !scanner.isScanning {
-                EmptyState(icon: "doc.fill", text: "Premi Scansiona per cercare file grandi o inutilizzati")
+                EmptyState(icon: "doc.fill", text: L("Premi Scansiona per cercare file grandi o inutilizzati", "Press Scan to find large or unused files"))
             } else {
                 HStack(spacing: 0) {
                     Toggle("", isOn: Binding(
@@ -261,14 +304,14 @@ struct FilesView: View {
                         }
                     ))
                     .toggleStyle(.checkbox).frame(width: 28)
-                    .help(allChecked ? "Deseleziona tutto" : "Seleziona tutto")
+                    .help(allChecked ? L("Deseleziona tutto", "Deselect all") : L("Seleziona tutto", "Select all"))
 
-                    Text("File").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Categoria").frame(width: 100, alignment: .leading)
-                    Text("Dimensione").frame(width: 110, alignment: .trailing)
-                    Text("Ultima modifica").frame(width: 140, alignment: .trailing)
-                    Text("Suggerimento").frame(width: 180, alignment: .center)
-                    Text("Azioni").frame(width: 60, alignment: .center)
+                    Text(L("File", "File")).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(L("Categoria", "Category")).frame(width: 100, alignment: .leading)
+                    Text(L("Dimensione", "Size")).frame(width: 110, alignment: .trailing)
+                    Text(L("Ultima modifica", "Last modified")).frame(width: 140, alignment: .trailing)
+                    Text(L("Suggerimento", "Suggestion")).frame(width: 180, alignment: .center)
+                    Text(L("Azioni", "Actions")).frame(width: 60, alignment: .center)
                 }
                 .font(.caption).foregroundColor(.secondary)
                 .padding(.horizontal, 20).padding(.vertical, 5)
@@ -298,28 +341,34 @@ struct FilesView: View {
                 FooterBar {
                     let high = scanner.filteredFiles.filter { $0.riskScore >= 70 }
                     let sz   = high.reduce(Int64(0)) { $0 + $1.size }
-                    Text("\(high.count) file consigliati · risparmio potenziale: \(ByteCountFormatter.string(fromByteCount: sz, countStyle: .file))")
-                        .font(.caption).foregroundColor(.secondary)
+                    Text(L(
+                        "\(high.count) file consigliati · risparmio potenziale: \(ByteCountFormatter.string(fromByteCount: sz, countStyle: .file))",
+                        "\(high.count) files suggested · potential saving: \(ByteCountFormatter.string(fromByteCount: sz, countStyle: .file))"
+                    )).font(.caption).foregroundColor(.secondary)
                 }
             }
         }
-        .alert("Eliminare \(selection.count) elementi?", isPresented: $showBulkConfirm) {
-            Button("Sposta nel Cestino", role: .destructive) {
+        .alert(L("Eliminare \(selection.count) elementi?", "Delete \(selection.count) items?"), isPresented: $showBulkConfirm) {
+            Button(L("Sposta nel Cestino", "Move to Trash"), role: .destructive) {
                 let toDelete = selectedItems
                 selection.removeAll()
                 toDelete.forEach { scanner.moveToTrash($0) }
             }
-            Button("Annulla", role: .cancel) {}
+            Button(L("Annulla", "Cancel"), role: .cancel) {}
         } message: {
-            Text("Verranno spostati nel Cestino \(selection.count) elementi (\(ByteCountFormatter.string(fromByteCount: selectedSize, countStyle: .file))).")
+            Text(L(
+                "Verranno spostati nel Cestino \(selection.count) elementi (\(ByteCountFormatter.string(fromByteCount: selectedSize, countStyle: .file))).",
+                "\(selection.count) items (\(ByteCountFormatter.string(fromByteCount: selectedSize, countStyle: .file))) will be moved to Trash."
+            ))
         }
-        .alert("Eliminare \"\(singleTarget?.name ?? "")\"?", isPresented: $showSingleConfirm) {
-            Button("Sposta nel Cestino", role: .destructive) {
+        .alert(L("Eliminare \"\(singleTarget?.name ?? "")\"?", "Delete \"\(singleTarget?.name ?? "")\"?"), isPresented: $showSingleConfirm) {
+            Button(L("Sposta nel Cestino", "Move to Trash"), role: .destructive) {
                 if let i = singleTarget { selection.remove(i.id); scanner.moveToTrash(i) }
             }
-            Button("Annulla", role: .cancel) {}
+            Button(L("Annulla", "Cancel"), role: .cancel) {}
         } message: {
-            Text("Il file verrà spostato nel Cestino. Potrai recuperarlo prima di svuotarlo.")
+            Text(L("Il file verrà spostato nel Cestino. Potrai recuperarlo prima di svuotarlo.",
+                   "The file will be moved to Trash. You can recover it before emptying it."))
         }
     }
 }
@@ -335,13 +384,14 @@ struct SelectionBar: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill").foregroundColor(.accentColor)
-            Text("\(count) selezionat\(count == 1 ? "o" : "i") · \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))")
+            Text(L("\(count) selezionat\(count == 1 ? "o" : "i") · \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))",
+                   "\(count) selected · \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))"))
                 .font(.callout).bold()
             Spacer()
-            Button("Deseleziona tutto", action: onClear)
+            Button(L("Deseleziona tutto", "Deselect all"), action: onClear)
                 .buttonStyle(.plain).foregroundColor(.secondary).font(.callout)
             Button(action: onDelete) {
-                Label("Sposta nel Cestino", systemImage: "trash")
+                Label(L("Sposta nel Cestino", "Move to Trash"), systemImage: "trash")
                     .font(.callout)
             }
             .buttonStyle(.borderedProminent)
@@ -406,18 +456,18 @@ struct FileRow: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!item.isDirectory)
-                .help(item.isDirectory ? "Apri in Finder" : "")
+                .help(item.isDirectory ? L("Apri in Finder", "Open in Finder") : "")
 
                 Text(item.name).font(.body).lineLimit(1)
                 if item.isDirectory {
-                    Text("cartella").font(.caption2).foregroundColor(.secondary)
+                    Text(L("cartella", "folder")).font(.caption2).foregroundColor(.secondary)
                         .padding(.horizontal, 4).padding(.vertical, 1)
                         .background(Color.secondary.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(item.category.rawValue)
+            Text(item.category.displayName)
                 .font(.caption).foregroundColor(.secondary)
                 .frame(width: 100, alignment: .leading)
 
@@ -478,7 +528,7 @@ struct ActionButtons: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Sposta nel Cestino")
+        .help(L("Sposta nel Cestino", "Move to Trash"))
         .frame(width: 80)
     }
 }
@@ -518,6 +568,3 @@ extension View {
     }
 }
 
-extension FileItem.FileCategory: CaseIterable {
-    static var allCases: [FileItem.FileCategory] = [.download, .document, .video, .archive, .image, .cache, .other]
-}

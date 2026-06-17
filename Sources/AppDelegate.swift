@@ -6,16 +6,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     var popover: NSPopover!
     var onboardingWindow: NSWindow?
+    let updater = UpdateChecker()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         popover = NSPopover()
         popover.contentSize = NSSize(width: 860, height: 600)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: ContentView())
+        popover.contentViewController = NSHostingController(rootView: ContentView().environmentObject(updater))
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            // Use bundled template icon; fall back to SF Symbol
             let bundleURL = Bundle.main.resourceURL?.appendingPathComponent("menubar_template@2x.png")
             if let url = bundleURL, let img = NSImage(contentsOf: url) {
                 img.isTemplate = true
@@ -31,11 +31,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         try? SMAppService.mainApp.register()
-    }
-
-    @objc func showOnboarding() {
-        UserDefaults.standard.removeObject(forKey: "onboardingShown")
-        showOnboardingIfNeeded()
+        updater.checkForUpdates()
     }
 
     @objc func togglePopover() {
@@ -53,7 +49,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.onboardingWindow?.close()
             self.onboardingWindow = nil
         })
-
         let win = NSWindow(contentViewController: hosting)
         win.styleMask = [.titled, .closable, .fullSizeContentView]
         win.titlebarAppearsTransparent = true
@@ -70,7 +65,5 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        false
-    }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
