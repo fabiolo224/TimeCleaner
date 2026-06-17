@@ -16,12 +16,30 @@
   🇬🇧 Scan files (Downloads, Documents, Desktop, Cache, etc.)
 - 🇮🇹 Eliminazione nel Cestino (recuperabile)  
   🇬🇧 Move to Trash (recoverable)
-- 🇮🇹 Icona sempre presente nella menu bar  
-  🇬🇧 Icon always present in the menu bar
+- 🇮🇹 Icona sempre presente nella menu bar, si avvia automaticamente al login  
+  🇬🇧 Icon always in the menu bar, launches automatically at login
+- 🇮🇹 Aggiornamenti automatici dall'app  
+  🇬🇧 Automatic in-app updates
+- 🇮🇹 Interfaccia in italiano o inglese in base alla lingua del Mac  
+  🇬🇧 Interface in Italian or English based on your Mac's language
+- 🇮🇹 Disinstallazione in un click dal menu dell'app  
+  🇬🇧 One-click uninstall from the app menu
 
 ## Requisiti / Requirements
 
 - macOS 13 (Ventura) o superiore / or higher
+
+## Installazione / Installation
+
+🇮🇹 Scarica il `.dmg` dalla pagina [Releases](../../releases), aprilo e trascina TimeCleaner in `/Applications`.
+
+🇬🇧 Download the `.dmg` from the [Releases](../../releases) page, open it and drag TimeCleaner to `/Applications`.
+
+## Disinstallazione / Uninstall
+
+🇮🇹 Apri TimeCleaner → clicca l'icona ⚙️ in alto a destra → **Disinstalla TimeCleaner**.
+
+🇬🇧 Open TimeCleaner → click the ⚙️ icon in the top right → **Uninstall TimeCleaner**.
 
 ## Gatekeeper
 
