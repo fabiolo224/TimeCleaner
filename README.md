@@ -16,65 +16,17 @@ App macOS per la menu bar che analizza applicazioni e file inutilizzati, mostra 
 ## Requisiti
 
 - macOS 13 (Ventura) o superiore
-- Xcode Command Line Tools (`xcode-select --install`)
-
-## Installazione
-
-```bash
-git clone https://github.com/tuousername/TimeCleaner.git
-cd TimeCleaner
-chmod +x install.sh
-./install.sh
-```
-
-Lo script compila il codice, installa l'app in `/Applications` e configura il riavvio automatico. L'icona del cestino apparirà nella menu bar.
-
-## Disinstallazione
-
-```bash
-chmod +x uninstall.sh
-./uninstall.sh
-```
-
-## Build manuale
-
-Se vuoi solo compilare senza installare:
-
-```bash
-chmod +x build.sh
-./build.sh
-open TimeCleaner.app
-```
 
 ## Nota su Gatekeeper
 
 Poiché l'app non è firmata con un certificato Apple, al primo avvio macOS potrebbe avvisarti. Per aprirla:
 
-1. Tasto destro su `TimeCleaner.app` → **Apri**
-2. Clicca **Apri** nella finestra di dialogo
+1. Vai nelle impostazioni di sistema - privacy e sicurezza - apri comunque
 
 Oppure da terminale:
 ```bash
 xattr -cr /Applications/TimeCleaner.app
 ```
-
-## Struttura del progetto
-
-```
-TimeCleaner/
-├── Sources/
-│   ├── main.swift          # Entry point
-│   ├── AppDelegate.swift   # Menu bar, popover, onboarding
-│   ├── AppInfo.swift       # Scanner app e file
-│   ├── ContentView.swift   # UI principale
-│   └── Onboarding.swift    # Schermata di benvenuto
-├── AppIcon.iconset/        # Icone app
-├── menubar_template@2x.png # Icona menu bar
-├── build.sh                # Compila l'app
-├── install.sh              # Installa e configura
-└── uninstall.sh            # Rimuove tutto
-```
-
 ## Licenza
 
 MIT
