@@ -1,0 +1,109 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#1c2333"/>
+    <stop offset="100%" stop-color="#0d1017"/>
+  </linearGradient>
+  <linearGradient id="binBody" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#8ca3c8"/>
+    <stop offset="40%" stop-color="#6880a2"/>
+    <stop offset="100%" stop-color="#2e3d56"/>
+  </linearGradient>
+  <linearGradient id="binShine" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+    <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="lid" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#a0bce0"/>
+    <stop offset="100%" stop-color="#5a7299"/>
+  </linearGradient>
+  <linearGradient id="glassTop" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#4a9eff" stop-opacity="0.9"/>
+    <stop offset="100%" stop-color="#1a6fdd" stop-opacity="0.7"/>
+  </linearGradient>
+  <linearGradient id="glassBot" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#1a6fdd" stop-opacity="0.7"/>
+    <stop offset="100%" stop-color="#0a4aaa" stop-opacity="0.9"/>
+  </linearGradient>
+  <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#7ec8ff"/>
+    <stop offset="100%" stop-color="#3a9aff"/>
+  </linearGradient>
+  <linearGradient id="rimGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#c8daf0"/>
+    <stop offset="100%" stop-color="#4a6080"/>
+  </linearGradient>
+  <clipPath id="sq">
+    <path d="M512 60 C780 60 964 244 964 512 C964 780 780 964 512 964 C244 964 60 780 60 512 C60 244 244 60 512 60Z"/>
+  </clipPath>
+</defs>
+
+<rect width="1024" height="1024" rx="200" fill="url(#bg)"/>
+
+<g clip-path="url(#sq)">
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="512" height="1024" fill="#ffffff" fill-opacity="0.015"/>
+
+  <!-- Bin body -->
+  <rect x="272" y="720" width="480" height="160" rx="18" fill="url(#binBody)"/>
+  <rect x="272" y="720" width="480" height="160" rx="18" fill="url(#binShine)"/>
+
+  <!-- Bin stripes -->
+  <rect x="312" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+  <rect x="356" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+  <rect x="400" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+  <rect x="444" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+  <rect x="488" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+  <rect x="532" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+  <rect x="576" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+  <rect x="620" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+  <rect x="664" y="734" width="20" height="132" rx="10" fill="#3a5880" fill-opacity="0.55"/>
+
+  <!-- Lid -->
+  <rect x="262" y="698" width="500" height="32" rx="16" fill="url(#lid)"/>
+  <rect x="262" y="698" width="500" height="32" rx="16" fill="url(#binShine)"/>
+
+  <!-- Handle -->
+  <rect x="450" y="668" width="124" height="36" rx="18" fill="url(#rimGrad)"/>
+  <rect x="476" y="660" width="16" height="12" rx="6" fill="#8aa8cc"/>
+  <rect x="532" y="660" width="16" height="12" rx="6" fill="#8aa8cc"/>
+
+  <!-- Hourglass top bulb -->
+  <path d="M418 270 Q395 390 435 500 Q460 560 512 576 Q564 560 589 500 Q629 390 606 270 Z" fill="url(#glassTop)" opacity="0.88"/>
+  <!-- Hourglass bottom bulb -->
+  <path d="M418 698 Q395 578 435 468 Q460 408 512 392 Q564 408 589 468 Q629 578 606 698 Z" fill="url(#glassBot)" opacity="0.88"/>
+
+  <!-- Hourglass rims -->
+  <rect x="418" y="252" width="188" height="24" rx="12" fill="url(#rimGrad)"/>
+  <rect x="418" y="696" width="188" height="24" rx="12" fill="url(#rimGrad)"/>
+
+  <!-- Top cap ellipse -->
+  <ellipse cx="512" cy="264" rx="94" ry="24" fill="#5aaeff" opacity="0.7"/>
+  <!-- Bottom cap ellipse -->
+  <ellipse cx="512" cy="708" rx="94" ry="24" fill="#1a6fdd" opacity="0.7"/>
+
+  <!-- Sand/particles falling -->
+  <path d="M445 388 Q450 470 490 505 Q500 516 512 518 Q524 516 534 505 Q574 470 579 388 Q548 402 512 400 Q476 402 445 388 Z" fill="url(#sand)" opacity="0.85"/>
+
+  <!-- Falling particles -->
+  <circle cx="512" cy="540" r="6" fill="#7ec8ff" opacity="0.7"/>
+  <circle cx="504" cy="556" r="4" fill="#5ab0ff" opacity="0.5"/>
+  <circle cx="520" cy="562" r="3" fill="#5ab0ff" opacity="0.4"/>
+
+  <!-- Center divider line -->
+  <line x1="400" y1="484" x2="624" y2="484" stroke="#3a80cc" stroke-width="3" opacity="0.5" stroke-dasharray="6 4"/>
+
+  <!-- Center ring -->
+  <circle cx="512" cy="484" r="28" fill="none" stroke="#5aabff" stroke-width="3" opacity="0.6"/>
+  <circle cx="512" cy="484" r="7" fill="#7ec8ff" opacity="0.85"/>
+
+  <!-- Glass shine on top bulb -->
+  <path d="M426 290 Q434 310 440 340 Q444 360 444 380" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.2"/>
+
+  <!-- Rim highlights -->
+  <rect x="428" y="254" width="36" height="4" rx="2" fill="#ffffff" fill-opacity="0.22"/>
+</g>
+
+<!-- Squircle border -->
+<path d="M512 60 C780 60 964 244 964 512 C964 780 780 964 512 964 C244 964 60 780 60 512 C60 244 244 60 512 60Z" fill="none" stroke="#5a7a9a" stroke-width="2" opacity="0.35"/>
+</svg>
