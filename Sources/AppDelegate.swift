@@ -7,6 +7,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var popover: NSPopover!
     var onboardingWindow: NSWindow?
     let updater = UpdateChecker()
+    let settings = AppSettings()
     private var bundleWatcher: DispatchSourceFileSystemObject?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -14,7 +15,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover = NSPopover()
         popover.contentSize = NSSize(width: 860, height: 600)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: ContentView().environmentObject(updater))
+        popover.contentViewController = NSHostingController(
+            rootView: ContentView()
+                .environmentObject(updater)
+                .environmentObject(settings)
+        )
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
@@ -32,7 +37,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
         }
 
-        try? SMAppService.mainApp.register()
         updater.checkForUpdates()
     }
 

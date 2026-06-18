@@ -16,10 +16,14 @@ swiftc \
   "$SCRIPT_DIR/Sources/AppInfo.swift" \
   "$SCRIPT_DIR/Sources/ContentView.swift" \
   "$SCRIPT_DIR/Sources/Onboarding.swift" \
+  "$SCRIPT_DIR/Sources/Localization.swift" \
+  "$SCRIPT_DIR/Sources/Updater.swift" \
+  "$SCRIPT_DIR/Sources/Settings.swift" \
   -o "$APP_BUNDLE/Contents/MacOS/$APP_NAME" \
   -framework Cocoa \
   -framework SwiftUI \
-  -framework ServiceManagement
+  -framework ServiceManagement \
+  -framework UserNotifications
 
 cp "$SCRIPT_DIR/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 cp "$SCRIPT_DIR/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"

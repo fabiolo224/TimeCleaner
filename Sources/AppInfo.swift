@@ -24,13 +24,15 @@ func formatLastUsed(_ date: Date?) -> String {
 
 func calcRiskScore(size: Int64, unusedDays: Int) -> Int {
     let sizeScore = min(Int(size / (1024 * 1024 * 100)), 50)
+    let m = UserDefaults.standard.integer(forKey: "suggestionThresholdMonths")
+    let t = (m > 0 ? m : 3) * 30   // threshold in days
     let timeScore: Int
-    if unusedDays == Int.max   { timeScore = 50 }
-    else if unusedDays > 365  { timeScore = 50 }
-    else if unusedDays > 180  { timeScore = 35 }
-    else if unusedDays > 90   { timeScore = 20 }
-    else if unusedDays > 30   { timeScore = 10 }
-    else                       { timeScore = 0  }
+    if unusedDays == Int.max      { timeScore = 50 }
+    else if unusedDays > t * 4   { timeScore = 50 }
+    else if unusedDays > t * 2   { timeScore = 35 }
+    else if unusedDays > t       { timeScore = 20 }
+    else if unusedDays > t / 2   { timeScore = 10 }
+    else                          { timeScore = 0  }
     return sizeScore + timeScore
 }
 
@@ -319,6 +321,8 @@ class FileScanner: ObservableObject {
         "~/Public", "~/Shared"
     ].map { NSString(string: $0).expandingTildeInPath }
 
+    var additionalBlocklist: Set<String> = []
+
     private let blocklist: Set<String> = [
         "/System", "/usr", "/bin", "/sbin", "/etc", "/var",
         "/private/var", "/private/etc", "/Library/Apple",
@@ -398,7 +402,7 @@ class FileScanner: ObservableObject {
 
     private func isBlocked(_ url: URL) -> Bool {
         let p = url.path
-        return blocklist.contains(where: { p.hasPrefix($0) })
+        return blocklist.union(additionalBlocklist).contains(where: { p.hasPrefix($0) })
     }
 
     private func sizeOf(_ url: URL) -> Int64 {

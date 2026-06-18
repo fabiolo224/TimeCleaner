@@ -6,7 +6,9 @@ import AppKit
 struct ContentView: View {
     @State private var tab: Tab = .apps
     @State private var showUninstallConfirm = false
+    @State private var showSettings = false
     @EnvironmentObject var updater: UpdateChecker
+    @EnvironmentObject var settings: AppSettings
     enum Tab { case apps, files }
 
     var body: some View {
@@ -21,6 +23,10 @@ struct ContentView: View {
                 TabButton(title: L("File", "Files"),                icon: "doc.fill",  selected: tab == .files) { tab = .files }
                 Spacer()
                 Menu {
+                    Button(action: { showSettings = true }) {
+                        Label(L("Impostazioni", "Settings"), systemImage: "gearshape")
+                    }
+                    Divider()
                     Button(role: .destructive, action: { showUninstallConfirm = true }) {
                         Label(L("Disinstalla TimeCleaner", "Uninstall TimeCleaner"), systemImage: "trash")
                     }
@@ -47,6 +53,9 @@ struct ContentView: View {
             Divider()
 
             if tab == .apps { AppsView() } else { FilesView() }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView().environmentObject(settings)
         }
     }
 }
@@ -107,6 +116,7 @@ struct TabButton: View {
 
 struct AppsView: View {
     @StateObject private var scanner = AppScanner()
+    @EnvironmentObject var settings: AppSettings
     @State private var selection = Set<UUID>()
     @State private var showBulkConfirm  = false
     @State private var showSingleConfirm = false
@@ -139,15 +149,41 @@ struct AppsView: View {
                         Text(scanner.scanProgress).font(.caption).foregroundColor(.secondary).lineLimit(1)
                     }
                 }
-                Picker("", selection: $scanner.filterMode) {
-                    ForEach(AppScanner.FilterMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                }.pickerStyle(.menu).frame(width: 160)
-                Picker("", selection: $scanner.sortMode) {
-                    ForEach(AppScanner.SortMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                }.pickerStyle(.menu).frame(width: 130)
-                Button(action: { selection.removeAll(); scanner.scan() }) {
+                Menu {
+                    Button {
+                        selection.removeAll()
+                        scanner.filterMode = .all
+                        scanner.sortMode = .riskScore
+                        scanner.scan()
+                    } label: { Label(L("Tutti", "All"), systemImage: "square.grid.2x2") }
+                    Button {
+                        selection.removeAll()
+                        scanner.filterMode = .unused90
+                        scanner.sortMode = .lastUsed
+                        scanner.scan()
+                    } label: { Label(L("Non usati 3+ mesi", "Unused 3+ months"), systemImage: "clock") }
+                    Button {
+                        selection.removeAll()
+                        scanner.filterMode = .unused180
+                        scanner.sortMode = .lastUsed
+                        scanner.scan()
+                    } label: { Label(L("Non usati 6+ mesi", "Unused 6+ months"), systemImage: "clock.badge.xmark") }
+                    Button {
+                        selection.removeAll()
+                        scanner.filterMode = .all
+                        scanner.sortMode = .size
+                        scanner.scan()
+                    } label: { Label(L("Per dimensione", "By size"), systemImage: "arrow.up.arrow.down") }
+                } label: {
                     Label(L("Scansiona", "Scan"), systemImage: "arrow.clockwise")
-                }.disabled(scanner.isScanning).buttonStyle(.borderedProminent)
+                }
+                .disabled(scanner.isScanning)
+                .menuStyle(.borderlessButton)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .opacity(scanner.isScanning ? 0.5 : 1.0)
             }
             .padding(.horizontal, 20).padding(.vertical, 10)
 
@@ -218,6 +254,17 @@ struct AppsView: View {
                 }
             }
         }
+        .onAppear {
+            if settings.autoScanOnOpen && scanner.apps.isEmpty { scanner.scan() }
+        }
+        .onChange(of: scanner.isScanning) { _, scanning in
+            guard !scanning && !scanner.apps.isEmpty && settings.weeklyNotification else { return }
+            let t = settings.suggestionThresholdMonths * 30
+            let bytes = scanner.apps
+                .filter { $0.unusedDays > t }
+                .reduce(Int64(0)) { $0 + $1.size }
+            if bytes > 0 { settings.scheduleWeeklyWithData(unusedBytes: bytes) }
+        }
         .alert(L("Eliminare \(selection.count) app?", "Delete \(selection.count) apps?"), isPresented: $showBulkConfirm) {
             Button(L("Sposta nel Cestino", "Move to Trash"), role: .destructive) {
                 let toDelete = selectedApps
@@ -247,6 +294,7 @@ struct AppsView: View {
 
 struct FilesView: View {
     @StateObject private var scanner = FileScanner()
+    @EnvironmentObject var settings: AppSettings
     @State private var selection = Set<UUID>()
     @State private var showBulkConfirm   = false
     @State private var showSingleConfirm = false
@@ -277,28 +325,47 @@ struct FilesView: View {
                         Text(scanner.scanProgress).font(.caption).foregroundColor(.secondary).lineLimit(1)
                     }
                 }
-                HStack(spacing: 4) {
-                    Text(L("Min:", "Min:")).font(.caption).foregroundColor(.secondary)
-                    Picker("", selection: $scanner.minSizeMB) {
-                        Text("1 MB").tag(1.0); Text("10 MB").tag(10.0)
-                        Text("50 MB").tag(50.0); Text("100 MB").tag(100.0); Text("500 MB").tag(500.0)
-                    }.pickerStyle(.menu).frame(width: 80)
-                }
                 Picker("", selection: $scanner.categoryFilter) {
                     Text(L("Tutte categorie", "All categories")).tag(Optional<FileItem.FileCategory>.none)
                     ForEach(FileItem.FileCategory.allCases, id: \.self) {
                         Text($0.displayName).tag(Optional($0))
                     }
                 }.pickerStyle(.menu).frame(width: 140)
-                Picker("", selection: $scanner.filterMode) {
-                    ForEach(FileScanner.FilterMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                }.pickerStyle(.menu).frame(width: 155)
-                Picker("", selection: $scanner.sortMode) {
-                    ForEach(FileScanner.SortMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                }.pickerStyle(.menu).frame(width: 130)
-                Button(action: { selection.removeAll(); scanner.scan() }) {
+                Menu {
+                    Button {
+                        selection.removeAll()
+                        scanner.filterMode = .all
+                        scanner.sortMode = .riskScore
+                        scanner.scan()
+                    } label: { Label(L("Tutti", "All"), systemImage: "square.grid.2x2") }
+                    Button {
+                        selection.removeAll()
+                        scanner.filterMode = .unused90
+                        scanner.sortMode = .lastUsed
+                        scanner.scan()
+                    } label: { Label(L("Non usati 3+ mesi", "Unused 3+ months"), systemImage: "clock") }
+                    Button {
+                        selection.removeAll()
+                        scanner.filterMode = .unused180
+                        scanner.sortMode = .lastUsed
+                        scanner.scan()
+                    } label: { Label(L("Non usati 6+ mesi", "Unused 6+ months"), systemImage: "clock.badge.xmark") }
+                    Button {
+                        selection.removeAll()
+                        scanner.filterMode = .all
+                        scanner.sortMode = .size
+                        scanner.scan()
+                    } label: { Label(L("Per dimensione", "By size"), systemImage: "arrow.up.arrow.down") }
+                } label: {
                     Label(L("Scansiona", "Scan"), systemImage: "arrow.clockwise")
-                }.disabled(scanner.isScanning).buttonStyle(.borderedProminent)
+                }
+                .disabled(scanner.isScanning)
+                .menuStyle(.borderlessButton)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .opacity(scanner.isScanning ? 0.5 : 1.0)
             }
             .padding(.horizontal, 20).padding(.vertical, 10)
 
@@ -368,6 +435,23 @@ struct FilesView: View {
                     )).font(.caption).foregroundColor(.secondary)
                 }
             }
+        }
+        .onAppear {
+            scanner.minSizeMB = settings.minFileSizeMB
+            scanner.additionalBlocklist = Set(settings.excludedFolders)
+            if settings.autoScanOnOpen && scanner.files.isEmpty { scanner.scan() }
+        }
+        .onChange(of: settings.minFileSizeMB) { _, mb in scanner.minSizeMB = mb }
+        .onChange(of: settings.excludedFolders) { _, folders in
+            scanner.additionalBlocklist = Set(folders)
+        }
+        .onChange(of: scanner.isScanning) { _, scanning in
+            guard !scanning && !scanner.files.isEmpty && settings.weeklyNotification else { return }
+            let t = settings.suggestionThresholdMonths * 30
+            let bytes = scanner.files
+                .filter { $0.unusedDays > t }
+                .reduce(Int64(0)) { $0 + $1.size }
+            if bytes > 0 { settings.scheduleWeeklyWithData(unusedBytes: bytes) }
         }
         .alert(L("Eliminare \(selection.count) elementi?", "Delete \(selection.count) items?"), isPresented: $showBulkConfirm) {
             Button(L("Sposta nel Cestino", "Move to Trash"), role: .destructive) {

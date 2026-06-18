@@ -8,7 +8,7 @@ class UpdateChecker: ObservableObject {
     @Published var downloadProgress: Double = 0
 
     private let versionURL = "https://raw.githubusercontent.com/fabiolo224/TimeCleaner/main/version.json"
-    private let currentVersion = "1.0"
+    private let currentVersion = "1.1"
     private var downloadURL = ""
     private var progressObserver: NSKeyValueObservation?
 
